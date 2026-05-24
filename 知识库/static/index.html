@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<title>华为 OD 刷题知识库</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="header">
+  <h1>📚 华为 OD 刷题知识库</h1>
+  <p id="headerSub">加载中...</p>
+</div>
+<div class="container">
+  <div class="stats-bar" id="statsBar"></div>
+
+    <div class="tabs">
+    <button class="tab active" onclick="switchTab('browse')">📋 浏览题目</button>
+    <button class="tab" onclick="switchTab('exam')">📝 模拟考试</button>
+    <button class="tab" onclick="switchTab('plan')">🗺️ 刷题路线</button>
+    <button class="tab" onclick="switchTab('templates')">📝 解题模板</button>
+  </div>
+
+  <!-- Browse Tab -->
+  <div class="tab-content active" id="tab-browse">
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="搜索题目名称..." oninput="debounceFilter()" autofocus>
+      <select id="scoreFilter" onchange="filterProblems()">
+        <option value="all">全部分数</option>
+        <option value="100">100分</option>
+        <option value="200">200分</option>
+      </select>
+      <select id="diffFilter" onchange="filterProblems()">
+        <option value="all">全部难度</option>
+        <option value="简单">🟢 简单</option>
+        <option value="中等">🟡 中等</option>
+        <option value="困难">🔴 困难</option>
+      </select>
+      <select id="langFilter" onchange="filterProblems()">
+        <option value="all">全部语言</option>
+      </select>
+      <select id="phaseFilter" class="phase-filter" onchange="filterProblems()">
+        <option value="all">全部阶段</option>
+        <option value="P1">P1-基础</option>
+        <option value="P2">P2-核心</option>
+        <option value="P3">P3-进阶</option>
+        <option value="P4">P4-高阶</option>
+        <option value="P5">P5-综合</option>
+      </select>
+    </div>
+    <div class="vol-filter" id="volFilter"></div>
+    <div class="main-panel">
+      <div class="sidebar">
+        <div class="section-title">📂 按阶段 / 分类</div>
+        <div class="category-list" id="categoryList"></div>
+        <div class="fav-section" id="favSection" style="display:none">
+          <div class="fs-title">⭐ 收藏题目</div>
+          <div id="favList"></div>
+        </div>
+        <div class="history-panel" id="historyPanel" style="display:none">
+          <div class="hp-title">🕐 最近浏览</div>
+          <div class="history-list" id="historyList"></div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="problem-list">
+          <div class="list-header">
+            <span id="resultCount">共 0 道</span>
+            <span id="currentCategory"></span>
+          </div>
+          <div id="problemList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exam Tab -->
+  <div class="tab-content" id="tab-exam">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <div>
+        <button class="vol-btn" onclick="generateExam()" style="padding:10px 24px;border-radius:8px;font-size:15px;background:#1a73e8;color:white;border:none;cursor:pointer">🎲 生成新试卷</button>
+        <span style="margin-left:12px;font-size:13px;color:#666">每次随机 1 道 200分 + 2 道 100分（简单+中等各一）</span>
+      </div>
+      <div id="examTimer" style="font-size:18px;font-weight:600;color:#1a73e8;display:none">⏱️ 00:00</div>
+    </div>
+    <div id="examResult" style="text-align:center;padding:60px 20px;color:#999">
+      <div style="font-size:48px;margin-bottom:12px">📝</div>
+      <div style="font-size:16px;margin-bottom:8px">点击上方按钮开始模拟考试</div>
+      <div style="font-size:13px">每套题含 200分*1 + 100分简单*1 + 100分中等*1，共 3 题</div>
+    </div>
+    <div id="examProblems" style="display:none">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:16px" id="examCards"></div>
+    </div>
+  </div>
+
+  <!-- Study Plan Tab -->
+  <div class="tab-content" id="tab-plan">
+    <div id="studyPlan"></div>
+  </div>
+
+  <!-- Templates Tab -->
+  <div class="tab-content" id="tab-templates">
+    <div id="templateList"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal problem-modal" id="problemModal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle"></span>
+      <span class="close" onclick="closeModal()">&times;</span>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <div id="problemContent"></div>
+    </div>
+    <div class="modal-footer" id="modalFooter">
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

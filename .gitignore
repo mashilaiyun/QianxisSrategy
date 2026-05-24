@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+知识库/__pycache__/
+知识库/docs/
+知识库/problems.db
