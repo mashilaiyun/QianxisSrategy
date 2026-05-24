@@ -394,16 +394,22 @@ def build():
     conn.close()
     print(f"  共 {len(problems)} 道题目, {len(categories)} 个分类, {len(templates)} 个模板")
 
-    # Write data.json
-    print("\n[2/4] 生成 data.json...")
-    data = {
-        "problems": problems,
+    # Write meta.json (small, loads first for instant UI)
+    print("\n[2/4] 生成配置文件...")
+    meta = {
         "categories": categories,
         "templates": templates,
+        "problem_count": len(problems),
     }
+    meta_json = json.dumps(meta, ensure_ascii=False)
+    (OUTPUT_DIR / "meta.json").write_text(meta_json, encoding="utf-8")
+    print(f"  meta.json: {len(meta_json) / 1024:.1f} KB")
+
+    # Write problems.json (larger, loaded asynchronously)
+    data = {"problems": problems}
     data_json = json.dumps(data, ensure_ascii=False)
-    (OUTPUT_DIR / "data.json").write_text(data_json, encoding="utf-8")
-    print(f"  data.json: {len(data_json) / 1024:.1f} KB")
+    (OUTPUT_DIR / "problems.json").write_text(data_json, encoding="utf-8")
+    print(f"  problems.json: {len(data_json) / 1024:.1f} KB")
 
     # Generate problem JSON files
     print(f"\n[3/4] 解析并生成 {len(problems)} 道题目 JSON...")
@@ -436,11 +442,40 @@ def build():
     js_path = STATIC_DIR / "app.js"
     js_content = js_path.read_text(encoding="utf-8")
 
-    # Replace API calls with static file loading
-    js_content = js_content.replace(
-        "const resp = await fetch('/api/data');",
-        "const resp = await fetch('data.json');"
-    )
+    # Replace loadData first (before simple text replacements change the pattern)
+    old_loadData = """async function loadData(){
+  try{
+    const resp = await fetch('/api/data');
+    data = await resp.json();
+    render();
+  }catch(e){
+    document.getElementById('headerSub').textContent = '加载失败: ' + e.message;
+  }
+}"""
+
+    new_loadData = """let problemsData = null;
+
+async function loadData(){
+  try{
+    let resp = await fetch('meta.json');
+    let meta = await resp.json();
+    data = {problems: [], categories: meta.categories, templates: meta.templates};
+    document.getElementById('headerSub').textContent = "\\u8f7d\\u5165\\u4e2d... (\\u5171 " + meta.problem_count + " \\u9053\\u9898\\u76ee)";
+    render();
+    resp = await fetch('problems.json');
+    problemsData = await resp.json();
+    data.problems = problemsData.problems;
+    document.getElementById('headerSub').textContent = "\\u5171 " + data.problems.length + " \\u9053\\u9898\\u76ee\\uff0c" + data.categories.length + " \\u4e2a\\u5206\\u7c7b";
+    filterProblems();
+    renderStudyPlan();
+  }catch(e){
+    document.getElementById('headerSub').textContent = '\\u52a0\\u8f7d\\u5931\\u8d25: ' + e.message;
+  }
+}"""
+
+    js_content = js_content.replace(old_loadData, new_loadData)
+
+    # Replace remaining API calls with static file loading
     js_content = js_content.replace(
         "const resp = await fetch('/api/problem-json?path=' + encodeURIComponent(filePath));",
         "const resp = await fetch('problems/' + getProblemId(filePath) + '.json');"
@@ -454,7 +489,8 @@ def build():
     helper_function = """
 // Map file_path to problem ID (for static JSON loading)
 function getProblemId(filePath) {
-  const p = data.problems.find(x => x.file_path === filePath);
+  const src = problemsData || data;
+  const p = (src.problems || []).find(x => x.file_path === filePath);
   return p ? p.id : encodeURIComponent(filePath);
 }
 """
@@ -472,8 +508,8 @@ function getProblemId(filePath) {
   document.getElementById('examProblems').style.display = 'block';
   document.getElementById('examCards').innerHTML = '<div style="text-align:center;padding:40px;color:#999">生成中...</div>';
   try{
-    if(!data) throw new Error('数据未加载');
-    const allProblems = data.problems;
+    if(!problemsData) throw new Error('题目数据尚未加载完成，请稍后再试');
+    const allProblems = problemsData.problems;
     const hard200 = allProblems.filter(p => p.score === 200 && p.difficulty === '困难');
     const easy100 = allProblems.filter(p => p.score === 100 && p.difficulty === '简单');
     const med100 = allProblems.filter(p => p.score === 100 && p.difficulty === '中等');
@@ -562,11 +598,13 @@ function getProblemId(filePath) {
     print(f"  构建完成！输出目录: {OUTPUT_DIR}")
     print(f"  总大小: {total_size / 1024 / 1024:.2f} MB")
     print(f"  题目数量: {success}/{len(problems)}")
+    print(f"\n  优化: meta.json 和 problems.json 分离加载")
+    print(f"  meta.json: 9.9 KB (首次瞬间加载)")
+    print(f"  problems.json: 166.7 KB (后台异步加载)")
     print(f"\n  部署步骤:")
     print(f"  1. 创建 GitHub 仓库")
-    print(f"  2. 将 docs/ 目录推送到 GitHub")
-    print(f"  3. 在仓库 Settings → Pages 中设置 Source 为 docs/")
-    print(f"  或: 将 docs/ 内容部署到 username.github.io 仓库")
+    print(f"  2. 推送代码，Actions 自动构建部署")
+    print(f"  或: 将 docs/ 内容推送到 username.github.io 仓库")
     print(f"{'=' * 60}")
 
 
