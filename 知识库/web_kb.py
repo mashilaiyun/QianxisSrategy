@@ -563,6 +563,28 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(b"File not found")
             return
 
+        # Fallback: serve static files from STATIC_DIR
+        rel = path.lstrip('/')
+        full = (STATIC_DIR / rel).resolve()
+        try:
+            full.relative_to(STATIC_DIR.resolve())
+        except ValueError:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"Not found")
+            return
+        if full.exists() and full.is_file():
+            ext = full.suffix.lower()
+            ct = {"css": "text/css; charset=utf-8", "js": "application/javascript; charset=utf-8",
+                  "html": "text/html; charset=utf-8", "json": "application/json",
+                  "png": "image/png", "svg": "image/svg+xml"}.get(ext.lstrip("."), "application/octet-stream")
+            self.send_response(200)
+            self.send_header("Content-Type", ct)
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(full.read_bytes())
+            return
+
         self.send_response(404)
         self.end_headers()
         self.wfile.write(b"Not found")

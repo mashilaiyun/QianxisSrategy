@@ -475,34 +475,21 @@ async function loadData(){
 
     js_content = js_content.replace(old_loadData, new_loadData)
 
-    # Replace remaining API calls with static file loading
-    js_content = js_content.replace(
-        "const resp = await fetch('/api/problem-json?path=' + encodeURIComponent(filePath));",
-        "const resp = await fetch('problems/' + getProblemId(filePath) + '.json');"
-    )
-    js_content = js_content.replace(
-        "const resp = await fetch('/api/exam');",
-        "// Exam generated client-side from data.json"
-    )
+    # Fix the exam generation to use local data (BEFORE /api/exam replacement)
+    old_generate_exam = """async function generateExam(){
+  document.getElementById('examResult').style.display = 'none';
+  document.getElementById('examProblems').style.display = 'block';
+  document.getElementById('examCards').innerHTML = '<div style="text-align:center;padding:40px;color:#999">生成中...</div>';
+  try{
+    const resp = await fetch('/api/exam');
+    const data = await resp.json();
+    renderExam(data);
+    startExamTimer();
+  }catch(e){
+    document.getElementById('examCards').innerHTML = `<div style="text-align:center;padding:40px;color:#f44336">生成失败: ${e.message}</div>`;
+  }
+}"""
 
-    # Add the getProblemId helper function
-    helper_function = """
-// Map file_path to problem ID (for static JSON loading)
-function getProblemId(filePath) {
-  const src = problemsData || data;
-  const p = (src.problems || []).find(x => x.file_path === filePath);
-  return p ? p.id : encodeURIComponent(filePath);
-}
-"""
-
-    # Insert helper before loadData
-    js_content = js_content.replace(
-        "async function loadData(){",
-        helper_function + "\nasync function loadData(){"
-    )
-
-    # Fix the exam generation to use local data
-    # Replace generateExam to work without API call
     new_generate_exam = """async function generateExam(){
   document.getElementById('examResult').style.display = 'none';
   document.getElementById('examProblems').style.display = 'block';
@@ -524,17 +511,29 @@ function getProblemId(filePath) {
   }
 }"""
 
+    js_content = js_content.replace(old_generate_exam, new_generate_exam)
+
+    # Replace remaining API calls with static file loading
     js_content = js_content.replace(
-        "async function generateExam(){",
-        new_generate_exam[:50]
+        "const resp = await fetch('/api/problem-json?path=' + encodeURIComponent(filePath));",
+        "const resp = await fetch('problems/' + getProblemId(filePath) + '.json');"
     )
 
-    # Find and replace the full generateExam function
-    old_exam_re = re.compile(
-        r'async function generateExam\(\).*?\}',
-        re.DOTALL
+    # Add the getProblemId helper function
+    helper_function = """
+// Map file_path to problem ID (for static JSON loading)
+function getProblemId(filePath) {
+  const src = problemsData || data;
+  const p = (src.problems || []).find(x => x.file_path === filePath);
+  return p ? p.id : encodeURIComponent(filePath);
+}
+"""
+
+    # Insert helper before loadData
+    js_content = js_content.replace(
+        "async function loadData(){",
+        helper_function + "\nasync function loadData(){"
     )
-    js_content = old_exam_re.sub(new_generate_exam, js_content)
 
     # Fix loadProblemContent to handle static file path resolution
     old_load = """async function loadProblemContent(filePath){
