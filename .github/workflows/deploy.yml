@@ -3,8 +3,6 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '.github/**'
 
 permissions:
   contents: read
@@ -35,7 +33,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 知识库/docs
+          path: docs
 
   deploy:
     runs-on: ubuntu-latest
