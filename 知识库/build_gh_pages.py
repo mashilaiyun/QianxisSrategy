@@ -17,7 +17,7 @@ from pathlib import Path
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__))).parent
 DB_PATH = BASE_DIR / "知识库" / "problems.db"
 STATIC_DIR = Path(__file__).parent / "static"
-OUTPUT_DIR = Path(__file__).parent / "docs"
+OUTPUT_DIR = BASE_DIR / "docs"
 
 _cache = {}
 

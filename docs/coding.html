@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<title>刷题 - 华为 OD 知识库</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/theme/monokai.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/hint/show-hint.min.css">
+<link rel="stylesheet" href="style.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#1a1a2e;color:#333}
+.coding-header{display:flex;align-items:center;padding:0 20px;height:50px;background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;flex-shrink:0;gap:16px;z-index:100}
+.coding-header .back-btn{color:#fff;text-decoration:none;font-size:14px;padding:6px 14px;border-radius:6px;background:rgba(255,255,255,.15);display:flex;align-items:center;gap:4px;transition:background .15s;flex-shrink:0}
+.coding-header .back-btn:hover{background:rgba(255,255,255,.25)}
+.coding-header h1{font-size:16px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.coding-header .header-lang-wrap{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.coding-header .header-lang-wrap label{font-size:13px;opacity:.85}
+.coding-header #langSelect{padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:13px;outline:none;cursor:pointer}
+.coding-header #langSelect option{color:#333;background:#fff}
+.coding-container{display:flex;height:calc(100vh - 50px);overflow:hidden}
+.problem-panel{width:42%;min-width:320px;background:#fff;overflow-y:auto;border-right:1px solid #e0e0e0;padding:20px 24px}
+.problem-panel .section-card{margin-bottom:14px}
+.editor-panel{flex:1;display:flex;flex-direction:column;background:#1e1e2e;min-width:0}
+.editor-wrapper{flex:1;position:relative;overflow:hidden}
+.editor-wrapper .CodeMirror{height:100%;font-size:19px;line-height:1.6}
+.editor-toolbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#252540;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0}
+#runBtn{padding:8px 22px;border:none;border-radius:6px;background:#1a73e8;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px}
+#runBtn:hover{background:#1557b0}
+#runBtn:disabled{background:#555;cursor:not-allowed}
+#runBtn.running{background:#f59e0b}
+#runStatus{font-size:13px;color:#aaa}
+.result-panel{max-height:260px;overflow-y:auto;background:#1e1e2e;border-top:2px solid #333;flex-shrink:0;display:none}
+.result-panel.show{display:block}
+.result-header{padding:8px 16px;font-size:13px;font-weight:600;color:#cdd6f4;background:#252540;position:sticky;top:0;z-index:1}
+.result-summary{padding:8px 16px;font-size:13px;display:flex;align-items:center;gap:8px}
+.result-summary .pass{color:#4caf50}
+.result-summary .fail{color:#f44336}
+.test-case{padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.test-case:last-child{border-bottom:none}
+.test-case .tc-header{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:4px}
+.test-case .tc-header .tc-pass{color:#4caf50}
+.test-case .tc-header .tc-fail{color:#f44336}
+.test-case .tc-detail{font-size:12px;color:#a0a0b0;line-height:1.6;padding-left:4px}
+.test-case .tc-detail .tc-label{color:#888;display:inline-block;width:52px;flex-shrink:0}
+.test-case .tc-detail .tc-val{font-family:"JetBrainsMono Nerd Font","Consolas",monospace;background:rgba(255,255,255,.05);padding:1px 8px;border-radius:3px;color:#cdd6f4;white-space:pre-wrap;word-break:break-all}
+.test-case .tc-detail .tc-val.tc-diff{background:rgba(244,67,54,.15);color:#f44336}
+.result-placeholder{padding:20px 16px;text-align:center;color:#666;font-size:13px}
+.result-error{padding:10px 16px;color:#f44336;font-size:17px;font-family:"JetBrainsMono Nerd Font",monospace;white-space:pre-wrap;background:rgba(244,67,54,.08);border-radius:4px;margin:6px 12px}
+.stderr-block{margin:6px 0}
+.stderr-title{font-size:13px;font-weight:600;color:#f44336;margin-bottom:4px}
+.stderr-text{background:#2d1a1a;color:#f8d7da;padding:10px 14px;border-radius:6px;font-family:"JetBrainsMono Nerd Font",Consolas,monospace;font-size:15px;line-height:1.5;white-space:pre-wrap;word-break:break-all;overflow-x:auto;max-height:300px;overflow-y:auto;border:1px solid rgba(244,67,54,.3);margin:0}
+.tc-has-error{border-left:3px solid #f44336}
+/* Problem description */
+.section-card{border:1px solid #e8e8e8;border-radius:8px;overflow:hidden}
+.section-card .section-header{padding:8px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.section-card .section-body{padding:10px 14px;font-size:14px;line-height:1.7;color:#444}
+.section-card.desc .section-header{background:#f0f6ff;color:#1a73e8}
+.section-card.io .section-header{background:#f0faf3;color:#1a8538}
+.section-card.sample .section-header{background:#fef9e7;color:#d18d00}
+.section-card.note .section-header{background:#fff4e5;color:#e65100}
+.section-body p{margin:4px 0}
+.section-body ul,.section-body ol{padding-left:18px;margin:4px 0}
+.section-body li{margin:2px 0}
+.section-body pre.plain-code{background:#f5f5f5;padding:8px 14px;border-radius:6px;font-family:"JetBrainsMono Nerd Font","Consolas",monospace;font-size:17px;line-height:1.6;overflow-x:auto;margin:6px 0;white-space:pre-wrap;word-break:normal;border:1px solid #e8e8e8;color:#333}
+.section-body blockquote{border-left:3px solid #ddd;padding:4px 10px;margin:6px 0;color:#666;font-size:13px;background:#fafafa;border-radius:0 4px 4px 0}
+.section-body img{max-width:100%;height:auto;border-radius:4px;margin:6px 0}
+.section-body strong{color:#222}
+.section-body code.inline{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:13px;color:#d63384}
+.section-body table{font-size:13px;border-collapse:collapse;margin:6px 0}
+.section-body td,.section-body th{border:1px solid #ddd;padding:4px 10px}
+.problem-loading{text-align:center;padding:60px 20px;color:#999}
+@media(max-width:900px){.coding-container{flex-direction:column}.problem-panel{width:100%;min-width:0;max-height:45vh;border-right:none;border-bottom:1px solid #e0e0e0}}
+</style>
+</head>
+<body>
+<div class="coding-header">
+  <a href="/" class="back-btn">← 返回</a>
+  <h1 id="problemTitle">加载中...</h1>
+  <div class="header-lang-wrap">
+    <label>语言:</label>
+    <select id="langSelect">
+      <option value="python">Python</option>
+      <option value="javascript">JavaScript</option>
+      <option value="java">Java</option>
+      <option value="cpp">C++</option>
+      <option value="c">C</option>
+      <option value="go">Go</option>
+      <option value="typescript">TypeScript</option>
+      <option value="csharp">C#</option>
+      <option value="rust">Rust</option>
+    </select>
+  </div>
+</div>
+<div class="coding-container">
+  <div class="problem-panel" id="problemPanel">
+    <div id="problemContent"><div class="problem-loading">📖 加载题目...</div></div>
+  </div>
+  <div class="editor-panel">
+    <div class="editor-wrapper">
+      <textarea id="codeEditor"></textarea>
+    </div>
+    <div class="editor-toolbar">
+      <button id="runBtn" onclick="runCode()">▶ 运行代码</button>
+      <span id="runStatus">测试示例并验证结果</span>
+    </div>
+    <div class="result-panel" id="resultPanel">
+      <div class="result-header">🧪 测试结果</div>
+      <div id="resultContent"><div class="result-placeholder">点击「运行代码」测试示例</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/hint/show-hint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/closebrackets.min.js"></script>
+<script src="coding.js"></script>
+</body>
+</html>
