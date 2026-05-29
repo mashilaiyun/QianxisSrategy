@@ -179,5 +179,6 @@ body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-s
 .code-display code .line:not(:empty){background-image:linear-gradient(90deg,transparent 0,transparent calc(4ch - .5px),rgba(255,255,255,.04) calc(4ch - .5px),rgba(255,255,255,.04) 4ch);background-size:4ch 100%;background-repeat:repeat-x;background-position:4.2em 0}
 .code-display code .line::before{content:counter(ln);display:inline-block;width:3em;text-align:right;padding-right:1.2em;color:#6c7086;user-select:none;opacity:.5;font-variant-numeric:tabular-nums;vertical-align:top}
 .code-display code .line:hover{background:rgba(255,255,255,.03);border-radius:2px}
+.coding-btn{display:inline-flex;align-items:center;gap:4px;padding:8px 18px;background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;transition:opacity .15s;white-space:nowrap}.coding-btn:hover{opacity:.85}
 @media(max-width:900px){.main-panel{flex-direction:column}.sidebar{width:100%}.category-list{max-height:250px}.history-list{max-height:120px}.modal.problem-modal{width:100%;max-height:100vh;border-radius:0}}
 @media(max-width:600px){.modal-body{padding:12px 14px}.section-card .section-body{padding:10px 12px}.lang-tab{padding:6px 12px;font-size:12px}}

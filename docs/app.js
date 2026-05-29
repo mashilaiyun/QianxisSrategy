@@ -209,7 +209,8 @@ function showDetail(encodedPath){
     <span class="meta-tag" style="background:${p.score===200?'#fce4ec':'#e8f5e9'};color:${p.score===200?'#c62828':'#2e7d32'}">${p.score}分</span>
     <span class="meta-tag" style="background:${p.difficulty==='简单'?'#e8f5e9':p.difficulty==='中等'?'#fff3e0':'#fce4ec'};color:${p.difficulty==='简单'?'#2e7d32':p.difficulty==='中等'?'#e65100':'#c62828'}">${p.difficulty}</span>
     ${(p.categories||[]).map(c => `<span class="meta-tag">${c}</span>`).join('')}
-    <span style="flex:1"></span>`;
+    <span style="flex:1"></span>
+    <a class="coding-btn" href="coding.html?path=${encodeURIComponent(p.file_path)}" target="_blank">✏️ 打开刷题</a>`;
   document.getElementById('modalOverlay').classList.add('show');
   loadProblemContent(path);
   addHistory(encodedPath, p.title);

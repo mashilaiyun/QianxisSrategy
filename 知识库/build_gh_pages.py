@@ -437,6 +437,10 @@ def build():
     print("\n[4/4] 复制静态文件...")
     shutil.copy2(STATIC_DIR / "index.html", OUTPUT_DIR / "index.html")
     shutil.copy2(STATIC_DIR / "style.css", OUTPUT_DIR / "style.css")
+    if (STATIC_DIR / "coding.html").exists():
+        shutil.copy2(STATIC_DIR / "coding.html", OUTPUT_DIR / "coding.html")
+    if (STATIC_DIR / "coding.js").exists():
+        shutil.copy2(STATIC_DIR / "coding.js", OUTPUT_DIR / "coding.js")
     shutil.copy2(STATIC_DIR / "coding.html", OUTPUT_DIR / "coding.html")
     shutil.copy2(STATIC_DIR / "coding.js", OUTPUT_DIR / "coding.js")
 
