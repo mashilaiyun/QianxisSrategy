@@ -330,33 +330,126 @@ function escapeHtml(text) {
 function extractTestCases(parsed) {
   testCases = [];
   const sections = parsed.sections || [];
+
   for (const s of sections) {
     if (s.type !== 'sample') continue;
+
     const div = document.createElement('div');
     div.innerHTML = s.html;
-    const text = div.textContent;
 
-    const examples = text.split(/示例\s*\d*\s*[：:]\s*/);
-    for (const ex of examples) {
-      const trimmed = ex.trim();
-      if (!trimmed) continue;
+    // Remove line-number artifacts (pre-numbering lists from code blocks)
+    div.querySelectorAll('ul.pre-numbering, ol.linenums, .line-numbers').forEach(el => el.remove());
 
+    // ---- Method 1: Table format (most common, ~90% of problems) ----
+    const tables = div.querySelectorAll('table');
+    for (const table of tables) {
+      const rows = table.querySelectorAll('tr');
       let input = '', output = '';
-      const inMatch = trimmed.match(/输入\s*[：:]\s*([\s\S]*?)(?:输出\s*[：:]|$)/);
-      const outMatch = trimmed.match(/输出\s*[：:]\s*([\s\S]*)/);
-
-      if (inMatch) input = inMatch[1].trim();
-      if (outMatch) output = outMatch[1].trim();
+      for (const row of rows) {
+        const cells = row.querySelectorAll('td, th');
+        let label = '';
+        let value = '';
+        if (cells.length >= 2) {
+          label = cells[0].textContent.trim();
+          value = cells[1].textContent.trim();
+        } else if (cells.length === 1) {
+          label = cells[0].textContent.trim();
+        }
+        if (/输入/.test(label)) input = value;
+        else if (/输出/.test(label)) output = value;
+      }
       if (input || output) {
         testCases.push({ input, expected: output });
       }
     }
+
+    // ---- Method 2: Paragraph + <pre> format (for non-table samples) ----
+    if (tables.length === 0) {
+      const children = Array.from(div.children);
+      let inputBuf = '', outputBuf = '';
+
+      for (let i = 0; i < children.length; i++) {
+        const el = children[i];
+        const tag = el.tagName;
+        const text = el.textContent.trim();
+        const isHeading = tag === 'H1' || tag === 'H2' || tag === 'H3' || tag === 'H4';
+
+        // "说明" terminates the current test case
+        if (/说明/.test(text) && (inputBuf || outputBuf)) {
+          commitIOPair(inputBuf, outputBuf);
+          inputBuf = ''; outputBuf = '';
+          continue;
+        }
+
+        // "用例2", "示例1" etc. indicate a new example within the same section
+        if (isHeading && /用例|示例/.test(text) && (inputBuf || outputBuf)) {
+          commitIOPair(inputBuf, outputBuf);
+          inputBuf = ''; outputBuf = '';
+          continue;
+        }
+
+        if (tag === 'P' || tag === 'DIV' || tag === 'SPAN' || isHeading) {
+          if (/输入/.test(text)) {
+            commitIOPair(inputBuf, outputBuf);
+            inputBuf = ''; outputBuf = '';
+            for (let j = i + 1; j < children.length; j++) {
+              const nxt = children[j];
+              if (nxt.tagName === 'PRE') {
+                inputBuf = extractPreText(nxt);
+                i = j;
+                break;
+              }
+              if (/输入|输出|说明|用例|示例/.test(nxt.textContent)) break;
+            }
+          } else if (/输出/.test(text) && !/说明/.test(text)) {
+            for (let j = i + 1; j < children.length; j++) {
+              const nxt = children[j];
+              if (nxt.tagName === 'PRE') {
+                outputBuf = extractPreText(nxt);
+                i = j;
+                break;
+              }
+              if (/输入|输出|说明|用例|示例/.test(nxt.textContent)) break;
+            }
+          }
+        }
+      }
+      commitIOPair(inputBuf, outputBuf);
+    }
   }
+
+  // Deduplicate
+  const seen = new Set();
+  testCases = testCases.filter(tc => {
+    const key = tc.input + '|||' + tc.expected;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   if (testCases.length > 0) {
     document.getElementById('runStatus').textContent = '已提取 ' + testCases.length + ' 个测试示例';
+  } else {
+    document.getElementById('runStatus').textContent = '⚠️ 未能提取测试用例，题目样本格式可能与解析器不兼容';
   }
 }
+
+function commitIOPair(input, output) {
+  if (input || output) {
+    testCases.push({ input: input || '', expected: output || '' });
+  }
+}
+
+function extractPreText(preEl) {
+  // Remove line-number lists and copy buttons
+  preEl.querySelectorAll('ul.pre-numbering, ol.linenums, .line-numbers, .hljs-button, div[class*="hljs"]').forEach(el => el.remove());
+  let text = preEl.textContent.trim();
+  // Strip leading/trailing blank lines
+  text = text.replace(/^\s*\n/, '').replace(/\n\s*$/, '');
+  return text;
+}
+
+
 
 async function runCode() {
   const btn = document.getElementById('runBtn');
@@ -408,17 +501,30 @@ function displayResults(results) {
   const passed = results.filter(r => r.passed).length;
   const total = results.length;
   const allPassed = passed === total;
+  const allFailed = passed === 0;
+
+  let statusMsg;
+  if (allPassed) {
+    statusMsg = '✅ 全部通过 (' + passed + '/' + total + ')';
+  } else if (allFailed) {
+    statusMsg = '❌ 全部未通过 (0/' + total + ')';
+  } else {
+    statusMsg = '❌ 通过 ' + passed + '/' + total;
+  }
 
   let html = '<div class="result-summary">';
   if (allPassed) {
     html += '<span class="pass">✅ 全部通过</span>';
+  } else if (allFailed) {
+    html += '<span class="fail">❌ 全部未通过</span>';
   } else {
     html += '<span class="fail">❌ 部分通过</span>';
   }
   html += ' <span style="color:#aaa">' + passed + '/' + total + ' 通过</span></div>';
 
   results.forEach((r, i) => {
-    html += '<div class="test-case">';
+    const hasStderr = r.stderr && r.stderr.length > 0;
+    html += '<div class="test-case' + (hasStderr ? ' tc-has-error' : '') + '">';
     html += '<div class="tc-header">' +
       (r.passed ? '<span class="tc-pass">✅</span>' : '<span class="tc-fail">❌</span>') +
       ' <span>测试用例 ' + (i + 1) + '</span></div>';
@@ -426,24 +532,22 @@ function displayResults(results) {
     if (r.input) {
       html += '<div><span class="tc-label">输入:</span><span class="tc-val">' + escapeHtml(r.input) + '</span></div>';
     }
-    html += '<div><span class="tc-label">输出:</span><span class="tc-val' + (r.passed ? '' : ' tc-diff') + '">' + escapeHtml(r.output || '(空)') + '</span></div>';
-    if (!r.passed && r.expected) {
-      html += '<div><span class="tc-label">期望:</span><span class="tc-val">' + escapeHtml(r.expected) + '</span></div>';
-    }
-    if (r.stderr) {
-      html += '<div class="result-error">' + escapeHtml(r.stderr) + '</div>';
+    if (hasStderr) {
+      // Show error output prominently as the primary feedback
+      html += '<div class="stderr-block"><div class="stderr-title">⛔ 错误输出:</div><pre class="stderr-text">' + escapeHtml(r.stderr) + '</pre></div>';
+    } else {
+      // Only show output/expected when there's no compilation error
+      html += '<div><span class="tc-label">输出:</span><span class="tc-val' + (r.passed ? '' : ' tc-diff') + '">' + escapeHtml(r.output || '(空)') + '</span></div>';
+      if (!r.passed && r.expected) {
+        html += '<div><span class="tc-label">期望:</span><span class="tc-val">' + escapeHtml(r.expected) + '</span></div>';
+      }
     }
     html += '</div></div>';
   });
 
   container.innerHTML = html;
 
-  const status = document.getElementById('runStatus');
-  if (allPassed) {
-    status.textContent = '✅ 全部通过 (' + passed + '/' + total + ')';
-  } else {
-    status.textContent = '❌ 通过 ' + passed + '/' + total;
-  }
+  document.getElementById('runStatus').textContent = statusMsg;
 }
 
 window.addEventListener('load', init);

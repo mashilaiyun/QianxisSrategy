@@ -628,7 +628,12 @@ class Handler(SimpleHTTPRequestHandler):
                     )
                     output = proc.stdout.strip()
                     stderr = proc.stderr.strip()
-                    passed = output.rstrip() == expected.rstrip()
+                    # Non-zero return code = compilation/runtime error -> test fails
+                    has_error = proc.returncode != 0
+                    if has_error:
+                        passed = False
+                    else:
+                        passed = output.rstrip() == expected.rstrip()
                     results.append({
                         'input': input_str,
                         'expected': expected,
@@ -641,14 +646,29 @@ class Handler(SimpleHTTPRequestHandler):
                         'input': input_str, 'expected': expected,
                         'output': '', 'stderr': '⏱️ 执行超时（10秒）', 'passed': False,
                     })
-                except Exception as e:
+                except MemoryError:
                     results.append({
                         'input': input_str, 'expected': expected,
-                        'output': '', 'stderr': str(e), 'passed': False,
+                        'output': '', 'stderr': '💥 内存不足，代码可能进入了死循环或消耗了过多内存', 'passed': False,
+                    })
+                except OSError as e:
+                    results.append({
+                        'input': input_str, 'expected': expected,
+                        'output': '', 'stderr': f'⚠️ 系统错误: {e}\n请确保 Python 环境正常', 'passed': False,
+                    })
+                except Exception as e:
+                    import traceback
+                    tb = traceback.format_exc()
+                    results.append({
+                        'input': input_str, 'expected': expected,
+                        'output': '', 'stderr': f'❌ 服务端异常:\n{tb}', 'passed': False,
                     })
                 finally:
-                    if tmp_path and os.path.exists(tmp_path):
-                        os.unlink(tmp_path)
+                    if tmp_path is not None and os.path.exists(tmp_path):
+                        try:
+                            os.unlink(tmp_path)
+                        except OSError:
+                            pass
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
