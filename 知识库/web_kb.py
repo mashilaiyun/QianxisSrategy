@@ -10,6 +10,9 @@ import sqlite3
 import sys
 import os
 import urllib.parse
+import subprocess
+import tempfile
+import re
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
@@ -30,6 +33,14 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
             self.wfile.write((STATIC_DIR / "index.html").read_bytes())
+            return
+
+        if path == "/coding":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write((STATIC_DIR / "coding.html").read_bytes())
             return
 
         if path.startswith("/static/"):
@@ -583,6 +594,68 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
             self.wfile.write(full.read_bytes())
+            return
+
+        self.send_response(404)
+        self.end_headers()
+        self.wfile.write(b"Not found")
+
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+
+        if path == "/api/run-python":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = json.loads(self.rfile.read(content_length))
+            code = post_data.get('code', '')
+            test_cases = post_data.get('test_cases', [])
+
+            results = []
+            for tc in test_cases:
+                input_str = tc.get('input', '')
+                expected = tc.get('expected', '')
+                tmp_path = None
+                try:
+                    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+                        f.write(code)
+                        tmp_path = f.name
+                    proc = subprocess.run(
+                        [sys.executable, tmp_path],
+                        input=input_str,
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                    output = proc.stdout.strip()
+                    stderr = proc.stderr.strip()
+                    passed = output.rstrip() == expected.rstrip()
+                    results.append({
+                        'input': input_str,
+                        'expected': expected,
+                        'output': output,
+                        'stderr': stderr,
+                        'passed': passed,
+                    })
+                except subprocess.TimeoutExpired:
+                    results.append({
+                        'input': input_str, 'expected': expected,
+                        'output': '', 'stderr': '⏱️ 执行超时（10秒）', 'passed': False,
+                    })
+                except Exception as e:
+                    results.append({
+                        'input': input_str, 'expected': expected,
+                        'output': '', 'stderr': str(e), 'passed': False,
+                    })
+                finally:
+                    if tmp_path and os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(json.dumps({"results": results}, ensure_ascii=False).encode("utf-8"))
             return
 
         self.send_response(404)

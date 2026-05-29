@@ -183,19 +183,8 @@ function showDetail(encodedPath){
   const path = decodeURIComponent(encodedPath);
   const p = data.problems.find(x => x.file_path === path);
   if(!p) return;
-  const isFav = isFavorite(encodedPath);
-  document.getElementById('modalTitle').textContent = `${p.difficulty === '简单'?'🟢':p.difficulty==='中等'?'🟡':'🔴'} ${p.title}`;
-  document.getElementById('modalFooter').innerHTML = `
-    <button class="fav-btn${isFav?' active':''}" id="favBtn" onclick="toggleFavorite('${encodedPath}')">${isFav?'⭐':'☆'}</button>
-    <span class="meta-tag">${p.volume}</span>
-    <span class="meta-tag" style="background:${p.score===200?'#fce4ec':'#e8f5e9'};color:${p.score===200?'#c62828':'#2e7d32'}">${p.score}分</span>
-    <span class="meta-tag" style="background:${p.difficulty==='简单'?'#e8f5e9':p.difficulty==='中等'?'#fff3e0':'#fce4ec'};color:${p.difficulty==='简单'?'#2e7d32':p.difficulty==='中等'?'#e65100':'#c62828'}">${p.difficulty}</span>
-    ${(p.categories||[]).map(c => `<span class="meta-tag">${c}</span>`).join('')}
-    <span style="flex:1"></span>
-    <a href="/file/${encodedPath}" target="_blank">📄 打开原始文件</a>`;
-  document.getElementById('modalOverlay').classList.add('show');
-  loadProblemContent(path);
   addHistory(encodedPath, p.title);
+  window.location.href = '/coding?path=' + encodedPath;
 }
 
 function randomProblem(){
@@ -349,7 +338,7 @@ function renderExam(data){
         </div>
         <div style="margin-bottom:8px">${(p.categories||[]).map(c => `<span class="tag" style="background:#e3f2fd;color:#1565c0;font-size:11px;padding:1px 6px;border-radius:3px;margin-right:4px">${c}</span>`).join('')}</div>
         <span class="exam-toggle" id="examToggle${i}" onclick="toggleExamContent('${path}',${i})">📖 展开题解</span>
-        <a href="javascript:showDetail('${path}')" style="font-size:12px;color:#1a73e8;text-decoration:none;padding:4px 10px;border:1px solid #1a73e8;border-radius:4px;display:inline-block;margin-left:6px">📄 新窗口</a>
+        <a href="/coding?path=${path}" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;padding:4px 10px;border:1px solid #1a73e8;border-radius:4px;display:inline-block;margin-left:6px">✏️ 打开刷题</a>
         <div class="exam-inline" id="${eid}"></div>
       </div>
     </div>`;
@@ -405,7 +394,7 @@ function renderExamInlineContent(parsed){
     langs.forEach((l,i) => {
       const code = codeBlocks[l].join('\n\n');
       const hlCode = highlightCode(code, l);
-      html += `<pre class="code-display exam-code" id="examCode-${l.replace(/[^a-zA-Z0-9]/g,'_')}" style="display:${i===0?'block':'none'};background:#1e1e2e;color:#cdd6f4;padding:10px 14px;font-family:Consolas,'Cascadia Code','JetBrains Mono','Fira Code',monospace;font-size:13px;line-height:1.5;overflow-x:auto;margin:0;white-space:pre;tab-size:4"><code>${hlCode}</code></pre>`;
+      html += `<pre class="code-display exam-code" id="examCode-${l.replace(/[^a-zA-Z0-9]/g,'_')}" style="display:${i===0?'block':'none'};background:#1e1e2e;color:#cdd6f4;padding:10px 14px;font-family:'JetBrainsMono Nerd Font',Consolas,monospace;font-size:17px;line-height:1.5;overflow-x:auto;margin:0;white-space:pre;tab-size:4"><code>${hlCode}</code></pre>`;
       html += `<button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('examCode-${l.replace(/[^a-zA-Z0-9]/g,'_')}').textContent).then(()=>{this.textContent='✅ 已复制';this.classList.add('copied');setTimeout(()=>{this.textContent='📋 复制';this.classList.remove('copied')},2000)}).catch(()=>{this.textContent='❌ 失败'})">📋 复制</button>`;
     });
   }
