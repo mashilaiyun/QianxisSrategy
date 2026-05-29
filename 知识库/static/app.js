@@ -183,8 +183,18 @@ function showDetail(encodedPath){
   const path = decodeURIComponent(encodedPath);
   const p = data.problems.find(x => x.file_path === path);
   if(!p) return;
+  const isFav = isFavorite(encodedPath);
+  document.getElementById('modalTitle').textContent = `${p.difficulty === '简单'?'🟢':p.difficulty==='中等'?'🟡':'🔴'} ${p.title}`;
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="fav-btn${isFav?' active':''}" id="favBtn" onclick="toggleFavorite('${encodedPath}')">${isFav?'⭐':'☆'}</button>
+    <span class="meta-tag">${p.volume}</span>
+    <span class="meta-tag" style="background:${p.score===200?'#fce4ec':'#e8f5e9'};color:${p.score===200?'#c62828':'#2e7d32'}">${p.score}分</span>
+    <span class="meta-tag" style="background:${p.difficulty==='简单'?'#e8f5e9':p.difficulty==='中等'?'#fff3e0':'#fce4ec'};color:${p.difficulty==='简单'?'#2e7d32':p.difficulty==='中等'?'#e65100':'#c62828'}">${p.difficulty}</span>
+    ${(p.categories||[]).map(c => `<span class="meta-tag">${c}</span>`).join('')}
+    <span style="flex:1"></span>`;
+  document.getElementById('modalOverlay').classList.add('show');
+  loadProblemContent(path);
   addHistory(encodedPath, p.title);
-  window.location.href = '/coding?path=' + encodedPath;
 }
 
 function randomProblem(){
@@ -338,7 +348,7 @@ function renderExam(data){
         </div>
         <div style="margin-bottom:8px">${(p.categories||[]).map(c => `<span class="tag" style="background:#e3f2fd;color:#1565c0;font-size:11px;padding:1px 6px;border-radius:3px;margin-right:4px">${c}</span>`).join('')}</div>
         <span class="exam-toggle" id="examToggle${i}" onclick="toggleExamContent('${path}',${i})">📖 展开题解</span>
-        <a href="/coding?path=${path}" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;padding:4px 10px;border:1px solid #1a73e8;border-radius:4px;display:inline-block;margin-left:6px">✏️ 打开刷题</a>
+        <a href="javascript:showDetail('${path}')" style="font-size:12px;color:#1a73e8;text-decoration:none;padding:4px 10px;border:1px solid #1a73e8;border-radius:4px;display:inline-block;margin-left:6px">📄 新窗口</a>
         <div class="exam-inline" id="${eid}"></div>
       </div>
     </div>`;
